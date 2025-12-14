@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+output/
+deployment/
+*.png
+.DS_Store
