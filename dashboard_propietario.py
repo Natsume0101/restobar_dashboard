@@ -189,7 +189,7 @@ if DATA_LOADED:
             
         menu_df['class'] = menu_df.apply(classify, axis=1)
         
-        # Scatter Plot
+        # Scatter Plot Enhanced
         fig = px.scatter(
             menu_df, 
             x='qty_sold', 
@@ -198,11 +198,39 @@ if DATA_LOADED:
             color='class',
             hover_name='item_name',
             text='item_name',
-            title="Matriz de Popularidad vs Rentabilidad",
-            color_discrete_map={'Star ⭐': 'green', 'Dog 🐕': 'red', 'Plowhorse 🐎': 'orange', 'Puzzle ❓': 'blue'}
+            title="Matriz de Ingeniería de Menú (Popularidad vs Rentabilidad)",
+            labels={'qty_sold': 'Popularidad (Unidades Vendidas)', 'margin_clp': 'Rentabilidad (Margen Unitario $)'},
+            color_discrete_map={'Star ⭐': '#2ecc71', 'Dog 🐕': '#e74c3c', 'Plowhorse 🐎': '#f1c40f', 'Puzzle ❓': '#3498db'}
         )
-        fig.add_hline(y=med_margin, line_dash="dash", annotation_text="Margen Medio")
-        fig.add_vline(x=med_vol, line_dash="dash", annotation_text="Volumen Medio")
+
+        # Calculate max values for shapes
+        max_x = menu_df['qty_sold'].max() * 1.1
+        max_y = menu_df['margin_clp'].max() * 1.1
+        min_x = 0
+        min_y = 0 # Assuming positive margins generally, or set to min
+
+        # Add Background Zones (Quadrants)
+        fig.update_layout(
+            shapes=[
+                # Star (Top-Right) - Green
+                dict(type="rect", x0=med_vol, y0=med_margin, x1=max_x, y1=max_y, fillcolor="rgba(46, 204, 113, 0.1)", line=dict(width=0), layer="below"),
+                # Plowhorse (Bottom-Right) - Yellow
+                dict(type="rect", x0=med_vol, y0=min_y, x1=max_x, y1=med_margin, fillcolor="rgba(241, 196, 15, 0.1)", line=dict(width=0), layer="below"),
+                # Puzzle (Top-Left) - Blue
+                dict(type="rect", x0=min_x, y0=med_margin, x1=med_vol, y1=max_y, fillcolor="rgba(52, 152, 219, 0.1)", line=dict(width=0), layer="below"),
+                # Dog (Bottom-Left) - Red
+                dict(type="rect", x0=min_x, y0=min_y, x1=med_vol, y1=med_margin, fillcolor="rgba(231, 76, 60, 0.1)", line=dict(width=0), layer="below"),
+            ],
+            annotations=[
+                dict(x=(med_vol+max_x)/2, y=(med_margin+max_y)/2, text="ESTRELLA ⭐", showarrow=False, font=dict(size=20, color="green", weight="bold")),
+                dict(x=(med_vol+max_x)/2, y=med_margin/2, text="CABALLITO 🐎", showarrow=False, font=dict(size=20, color="orange", weight="bold")),
+                dict(x=med_vol/2, y=(med_margin+max_y)/2, text="PUZZLE ❓", showarrow=False, font=dict(size=20, color="blue", weight="bold")),
+                dict(x=med_vol/2, y=med_margin/2, text="PERRO 🐕", showarrow=False, font=dict(size=20, color="red", weight="bold")),
+            ]
+        )
+        
+        fig.add_hline(y=med_margin, line_dash="dash", line_color="gray", annotation_text="Margen Medio")
+        fig.add_vline(x=med_vol, line_dash="dash", line_color="gray", annotation_text="Volumen Medio")
         st.plotly_chart(fig, use_container_width=True)
         
         st.dataframe(menu_df[['item_name', 'class', 'qty_sold', 'margin_clp', 'total_profit']].sort_values('total_profit', ascending=False))
