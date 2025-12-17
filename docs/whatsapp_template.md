@@ -8,8 +8,9 @@
 Ya está disponible el nuevo **Dashboard de Ventas** del Restobar. Pueden ver las ventas en tiempo real, productos más vendidos y tendencias sin instalar nada.
 
 🔗 **Link de acceso:**
-[Pegar Aquí Tu Link de Streamlit Cloud]
-*(Ejemplo: https://restobar-dashboard.streamlit.app)*
+https://restobardashboard-dwt6dmpg2s4ygtdkdlwpea.streamlit.app/
+
+*(Funciona en cualquier navegador: Chrome, Safari, Firefox, etc.)*
 
 ---
 
