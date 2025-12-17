@@ -1,0 +1,175 @@
+{
+    "promociones_semanales": {
+        "martes_pizza_libre": {
+            "nombre": "Martes de Pizza Libre",
+            "descripcion": "All-you-can-eat pizzas todos los martes",
+            "dia_semana": 1,
+            "hora_inicio": "19:00",
+            "hora_fin": "23:59",
+            "items_afectados": [
+                "Margarita",
+                "Pepperoni",
+                "Cuatro Formaggi"
+            ],
+            "tipo_descuento": "volumen",
+            "multiplicador_cantidad": 2.5,
+            "precio_fijo": null,
+            "activo": true
+        },
+        "jueves_ladies_night": {
+            "nombre": "Jueves Ladies Night",
+            "descripcion": "50% descuento en toda la carta de 21:00 a 00:00",
+            "dia_semana": 3,
+            "hora_inicio": "21:00",
+            "hora_fin": "23:59",
+            "items_afectados": "todos",
+            "tipo_descuento": "porcentaje",
+            "porcentaje_descuento": 50,
+            "multiplicador_trafico": 1.8,
+            "activo": true
+        },
+        "jueves_2x1_cocktails": {
+            "nombre": "Jueves 2x1 Coctelería",
+            "descripcion": "2x1 en cócteles seleccionados para mujeres",
+            "dia_semana": 3,
+            "hora_inicio": "21:00",
+            "hora_fin": "23:59",
+            "items_afectados": [
+                "Copa de Vino CS"
+            ],
+            "tipo_descuento": "2x1",
+            "multiplicador_cantidad": 2,
+            "porcentaje_descuento": 50,
+            "activo": true
+        },
+        "after_office": {
+            "nombre": "After Office 2x1",
+            "descripcion": "2x1 en piscolas, mojitos y cócteles seleccionados",
+            "dias_semana": [
+                0,
+                1,
+                2,
+                3,
+                4
+            ],
+            "hora_inicio": "18:00",
+            "hora_fin": "21:00",
+            "items_afectados": [
+                "Copa de Vino CS",
+                "Jugo de Pulpa"
+            ],
+            "tipo_descuento": "2x1",
+            "multiplicador_cantidad": 1.8,
+            "porcentaje_descuento": 50,
+            "activo": true
+        },
+        "bar_nikkita_weekend": {
+            "nombre": "Bar Nikkita - Viernes y Sábado",
+            "descripcion": "Ambiente club con énfasis en servicio de botellas",
+            "dias_semana": [
+                4,
+                5
+            ],
+            "hora_inicio": "23:00",
+            "hora_fin": "23:59",
+            "items_afectados": [
+                "Copa de Vino CS",
+                "Tabla Estación"
+            ],
+            "tipo_descuento": "premium",
+            "multiplicador_ticket": 1.4,
+            "multiplicador_trafico": 1.3,
+            "activo": true
+        }
+    },
+    "promociones_diarias": {
+        "menu_ejecutivo": {
+            "nombre": "Menú Ejecutivo",
+            "descripcion": "Menú de almuerzo con entrada, plato de fondo, postre y bebida",
+            "dias_semana": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+            ],
+            "hora_inicio": "12:30",
+            "hora_fin": "16:00",
+            "precio_basico": 9900,
+            "precio_completo": 12990,
+            "items_principales": [
+                "Valenciano",
+                "Salmón Tando",
+                "Filete Trifolatti"
+            ],
+            "items_entrada": [
+                "Arancini",
+                "Camarón a la Vista"
+            ],
+            "items_postre": [
+                "Volcán de Chocolate",
+                "Pavlova (Papaya)"
+            ],
+            "items_bebida": [
+                "Jugo de Pulpa",
+                "Copa de Vino CS"
+            ],
+            "probabilidad_basico": 0.6,
+            "probabilidad_completo": 0.4,
+            "activo": true
+        }
+    },
+    "eventos_especiales": {
+        "cumpleanos": {
+            "nombre": "Celebración de Cumpleaños",
+            "descripcion": "Show de bengalas y atención especial",
+            "items_afectados": [
+                "Tabla Estación",
+                "Copa de Vino CS"
+            ],
+            "multiplicador_cantidad": 1.5,
+            "probabilidad_diaria": 0.05,
+            "activo": true
+        },
+        "fiestas_patrias": {
+            "nombre": "Fiestas Patrias Chilenas",
+            "descripcion": "Eventos temáticos 18 de Septiembre",
+            "fechas": [
+                "09-17",
+                "09-18",
+                "09-19",
+                "09-20"
+            ],
+            "items_especiales": [
+                "Tabla Estación"
+            ],
+            "multiplicador_trafico": 2.0,
+            "activo": true
+        },
+        "navidad": {
+            "nombre": "Cena de Navidad",
+            "descripcion": "Cenas especiales de fin de año",
+            "fechas": [
+                "12-24",
+                "12-25",
+                "12-31",
+                "01-01"
+            ],
+            "multiplicador_trafico": 1.5,
+            "multiplicador_ticket": 1.3,
+            "activo": true
+        }
+    },
+    "metadata": {
+        "fuente": "Instagram @estacionlaserena",
+        "fecha_investigacion": "2025-12-17",
+        "ubicacion": "Av. del Mar 4000, La Serena, Chile",
+        "telefono": [
+            "+56991391198",
+            "+56934673993"
+        ],
+        "notas": "Datos extraídos de publicaciones en redes sociales y búsquedas web"
+    }
+}

@@ -340,7 +340,7 @@ for item_name, specs in ficha_tecnica_data.items():
 
 ficha_df = pd.DataFrame(ficha_records)
 ficha_df.to_csv('ficha_tecnica.csv', index=False, encoding='utf-8')
-print(f"✓ Generated ficha_tecnica.csv with {len(ficha_df)} items")
+print(f"[OK] Generated ficha_tecnica.csv with {len(ficha_df)} items")
 
 # ========== STEP 3: Generate Synthetic Sales Data ==========
 print("\n" + "="*70)
@@ -441,7 +441,7 @@ sales_df['rolling_avg_sales_7d'] = sales_df.groupby('item_name')['qty_sold'].tra
 sales_df['demand_forecast_next_day'] = sales_df['rolling_avg_sales_7d'] * np.random.uniform(0.9, 1.1, len(sales_df))
 
 sales_df.to_csv('ventas_sinteticas_3anos.csv', index=False, encoding='utf-8')
-print(f"✓ Generated ventas_sinteticas_3anos.csv with {len(sales_df):,} rows")
+print(f"[OK] Generated ventas_sinteticas_3anos.csv with {len(sales_df):,} rows")
 
 # ========== STEP 4: Generate Waste/Loss Data (Mermas) ==========
 print("\n" + "="*70)
@@ -496,7 +496,7 @@ for date in date_range:
 
 mermas_df = pd.DataFrame(mermas_records)
 mermas_df.to_csv('mermas.csv', index=False, encoding='utf-8')
-print(f"✓ Generated mermas.csv with {len(mermas_df):,} rows")
+print(f"[OK] Generated mermas.csv with {len(mermas_df):,} rows")
 
 # ========== VALIDATION & SUMMARY ==========
 print("\n" + "="*70)
@@ -522,23 +522,23 @@ preventable_waste = mermas_df[mermas_df['preventable'] == 'yes']['value_lost_clp
 print(f"   • Total Waste Value: ${total_waste_value:,.0f} CLP")
 print(f"   • Preventable Waste: ${preventable_waste:,.0f} CLP ({preventable_waste/total_waste_value*100:.1f}%)")
 
-print(f"\n✅ ML-READY FEATURES INCLUDED:")
+print(f"\n[+] ML-READY FEATURES INCLUDED:")
 print(f"   • Temporal: date, day_of_week, is_weekend, is_holiday")
 print(f"   • Environmental: weather_temp, foot_traffic_estimate")
 print(f"   • Business: promo_flag, rolling_avg_sales_7d")
 print(f"   • Predictive: demand_forecast_next_day")
 
-print(f"\n🎯 READY FOR PREDICTIVE MODELING:")
+print(f"\n[*] READY FOR PREDICTIVE MODELING:")
 print(f"   • Time series forecasting (Prophet, ARIMA, TimeGPT)")
 print(f"   • Inventory optimization algorithms")
 print(f"   • Waste reduction ML models")
 print(f"   • Revenue prediction models")
 
 print("\n" + "="*70)
-print("✓ ALL FILES GENERATED SUCCESSFULLY!")
+print("[SUCCESS] ALL FILES GENERATED SUCCESSFULLY!")
 print("="*70)
 print("\nOutput files:")
 print("  1. ficha_tecnica.csv")
 print("  2. ventas_sinteticas_3anos.csv")
 print("  3. mermas.csv")
-print("\n🚀 Ready for machine learning and predictive analytics!")
+print("\nReady for machine learning and predictive analytics!")
