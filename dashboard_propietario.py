@@ -403,7 +403,7 @@ if DATA_LOADED:
             else:
                 try:
                     genai.configure(api_key=api_key)
-                    model = genai.GenerativeModel('gemini-pro')
+                    model = genai.GenerativeModel('gemini-1.5-flash')
                     
                     context = get_dashboard_context(df, sales, mermas, reviews)
                     full_prompt = f"{context}\n\nPregunta del Usuario: {prompt}"
