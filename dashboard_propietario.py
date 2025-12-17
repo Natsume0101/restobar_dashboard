@@ -485,6 +485,8 @@ if DATA_LOADED:
 
                     model = genai.GenerativeModel(active_model_name)
                     
+                    context = get_dashboard_context(df, sales, mermas, reviews)
+
                     with st.expander("👀 Debug: ¿Qué datos está viendo la IA?", expanded=False):
                         st.code(context)
                         
