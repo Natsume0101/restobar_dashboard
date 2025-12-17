@@ -357,27 +357,84 @@ if DATA_LOADED:
         
         # 2. Context Builder Function
         def get_dashboard_context(df, sales, mermas, reviews):
-            # Calculate key metrics to feed the AI
+            # --- 1. GENERAL METRICS (3 Years) ---
             total_rev = df['target_revenue'].sum()
             avg_daily_rev = df['target_revenue'].mean()
+            total_days = df['date'].nunique()
             
-            top_items = sales.groupby('item_name')['qty_sold'].sum().sort_values(ascending=False).head(5).to_dict()
+            # --- 2. MONTHLY ANALYSIS (Best/Worst) ---
+            # Group Sales by Month
+            df['month_str'] = df['date'].dt.to_period('M').astype(str)
+            monthly_sales = df.groupby('month_str')['target_revenue'].sum().reset_index()
             
-            total_waste = mermas['value_lost_clp'].sum()
-            top_waste_cause = mermas['reason'].value_counts().idxmax()
+            best_month_row = monthly_sales.loc[monthly_sales['target_revenue'].idxmax()]
+            worst_month_row = monthly_sales.loc[monthly_sales['target_revenue'].idxmin()]
             
-            recent_bad_reviews = reviews[reviews['sentiment_label'] == 'negative'].sort_values('date', ascending=False).head(3)['text'].tolist()
+            # Group Waste by Month
+            mermas['month_str'] = mermas['date'].dt.to_period('M').astype(str)
+            monthly_waste = mermas.groupby('month_str')['value_lost_clp'].sum().reset_index()
+            
+            # Merge to find waste for best/worst sales months
+            def get_waste_for_month(m_str):
+                row = monthly_waste[monthly_waste['month_str'] == m_str]
+                return row['value_lost_clp'].values[0] if not row.empty else 0
+                
+            waste_at_best = get_waste_for_month(best_month_row['month_str'])
+            waste_at_worst = get_waste_for_month(worst_month_row['month_str'])
+
+            # --- 3. MENU ENGINEERING (Stars/Dogs) ---
+            item_stats = sales.groupby('item_name').agg({'qty_sold': 'sum', 'revenue': 'sum'}).reset_index()
+            # Approximate cost/margin calculation just for context (simplified)
+            # merging with recipes if available in scope, but assuming basic rank here 
+            # or re-using the logic from Tab 2 if possible. 
+            # For robustness, we'll just use Top Selling (Stars) and Bottom Selling (Dogs candidates) by revenue
+            top_5_items = item_stats.sort_values('revenue', ascending=False).head(5)
+            bottom_5_items = item_stats.sort_values('revenue', ascending=True).head(5)
+            
+            stars_str = ", ".join([f"{r['item_name']} (${r['revenue']:,.0f})" for _, r in top_5_items.iterrows()])
+            dogs_str = ", ".join([f"{r['item_name']} (${r['revenue']:,.0f})" for _, r in bottom_5_items.iterrows()])
+
+            # --- 4. CALENDAR PATTERNS ---
+            dow_map = {0:'Lunes', 1:'Martes', 2:'Miércoles', 3:'Jueves', 4:'Viernes', 5:'Sábado', 6:'Domingo'}
+            df['day_name'] = df['day_of_week'].map(dow_map)
+            dow_sales = df.groupby('day_name')['target_revenue'].mean().sort_values(ascending=False)
+            best_day = dow_sales.index[0]
+            worst_day = dow_sales.index[-1]
+
+            # --- 5. RECENT TRENDS (Last 6 Months) ---
+            last_6_months = monthly_sales.tail(6)
+            trend_str = ", ".join([f"{r['month_str']}: ${r['target_revenue']:,.0f}" for _, r in last_6_months.iterrows()])
             
             context = f"""
-            Eres un experto analista de datos de restaurantes. Tienes los siguientes datos actuales del negocio:
-            - Venta Total Periodo: ${total_rev:,.0f}
-            - Venta Promedio Diario: ${avg_daily_rev:,.0f}
-            - Top 5 Platos Más Vendidos: {top_items}
-            - Dinero Total Perdido en Mermas: ${total_waste:,.0f}
-            - Principal Causa de Merma: {top_waste_cause}
-            - Quejas Recientes de Clientes: {recent_bad_reviews}
+            Eres un experto analista de datos de restaurantes (Dueño de 'Estación La Serena'). 
+            Tienes acceso a la historia completa de 3 AÑOS de datos. Usa esta información para responder:
+
+            DATOS GENERALES:
+            - Venta Total Histórica: ${total_rev:,.0f} (en {total_days} días operados)
+            - Venta Promedio Diaria: ${avg_daily_rev:,.0f}
+
+            HITS & FRACASOS (VENTAS MENSUALES):
+            - 🏆 MEJOR MES DE LA HISTORIA: {best_month_row['month_str']} con ventas de ${best_month_row['target_revenue']:,.0f}. (Merma ese mes: ${waste_at_best:,.0f})
+            - ⚠️ PEOR MES DE LA HISTORIA: {worst_month_row['month_str']} con ventas de ${worst_month_row['target_revenue']:,.0f}. (Merma ese mes: ${waste_at_worst:,.0f})
+
+            INGENIERÍA DE MENÚ:
+            - ⭐ Platos Super Estrellas (Top Ingresos): {stars_str}
+            - 🐕 Platos Perro (Menos Ingresos, candidatos a eliminar): {dogs_str}
+
+            PATRONES SEMANALES:
+            - Día Más Fuerte: {best_day} (Promedio: ${dow_sales[0]:,.0f})
+            - Día Más Débil: {worst_day} (Promedio: ${dow_sales[-1]:,.0f})
+
+            TENDENCIA RECIENTE (Últimos 6 Meses):
+            - Evolución: {trend_str}
             
-            Responde preguntas basándote en estos datos. Sé breve, profesional y útil. Si te preguntan algo fuera de estos datos, di que no tienes esa información específica pero da un consejo general.
+            QUEJAS RECIENTES:
+            - {reviews[reviews['sentiment_label'] == 'negative'].sort_values('date', ascending=False).head(3)['text'].tolist()}
+
+            Instrucciones:
+            1. Si te preguntan por ventas/mermas, cruza los datos de "Mejor Mes" vs su merma.
+            2. Si te preguntan qué platos sacar, sugiere los "Perro".
+            3. Sé directo y usa emojis.
             """
             return context
 
