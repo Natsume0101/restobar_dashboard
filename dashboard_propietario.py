@@ -123,7 +123,7 @@ if DATA_LOADED:
         # KPIs
         col1, col2, col3 = st.columns(3)
         total_proj = future_df['pred_revenue'].sum()
-         busiest_day = future_df.loc[future_df['pred_revenue'].idxmax()]['date'].strftime('%A')
+        busiest_day = future_df.loc[future_df['pred_revenue'].idxmax()]['date'].strftime('%A')
         
         col1.metric("Venta Proyectada (7d)", f"${total_proj:,.0f}")
         col2.metric("Día Más Fuerte", busiest_day)
