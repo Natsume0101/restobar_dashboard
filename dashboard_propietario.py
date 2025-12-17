@@ -403,7 +403,33 @@ if DATA_LOADED:
             else:
                 try:
                     genai.configure(api_key=api_key)
-                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    
+                    # Attempt to find a supported model dynamically
+                    active_model_name = 'gemini-pro' # Default fallback
+                    try:
+                        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                        # Prefer 1.5 Flash, then Pro, then whatever is available
+                        preferences = ['models/gemini-1.5-flash', 'models/gemini-pro', 'models/gemini-1.0-pro']
+                        
+                        found_model = None
+                        for pref in preferences:
+                            if pref in available_models:
+                                found_model = pref
+                                break
+                        
+                        if found_model:
+                            active_model_name = found_model
+                        elif available_models:
+                            active_model_name = available_models[0] # Pick the first available one
+                            
+                    except Exception as e:
+                        # Fallback if listing fails
+                        pass
+
+                    model = genai.GenerativeModel(active_model_name)
+                    
+                    with st.expander("Detalles Técnicos", expanded=False):
+                        st.caption(f"🤖 Modelo conectado: {active_model_name}")
                     
                     context = get_dashboard_context(df, sales, mermas, reviews)
                     full_prompt = f"{context}\n\nPregunta del Usuario: {prompt}"
