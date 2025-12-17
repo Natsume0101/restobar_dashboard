@@ -5,6 +5,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from sklearn.ensemble import RandomForestRegressor
+import google.generativeai as genai
 from datetime import datetime, timedelta
 
 # ==========================================
@@ -78,7 +79,7 @@ except Exception as e:
 st.sidebar.title("👨‍🍳 Estación La Serena")
 st.sidebar.info("**Modo Propietario**")
 st.sidebar.markdown("---")
-view_mode = st.sidebar.radio("Ir a:", ["📊 Bola de Cristal (Predicción)", "🍔 Ingeniería de Menú", "⭐ Salud Operacional", "⏳ Historia & Tendencias"])
+view_mode = st.sidebar.radio("Ir a:", ["📊 Bola de Cristal (Predicción)", "🍔 Ingeniería de Menú", "⭐ Salud Operacional", "⏳ Historia & Tendencias", "🤖 Asistente Virtual"])
 
 if DATA_LOADED:
     
@@ -343,6 +344,80 @@ if DATA_LOADED:
                 barmode='stack'
             )
             st.plotly_chart(fig_reviews, use_container_width=True) # type: ignore
+
+    # ==========================================
+    # TAB 5: ASISTENTE VIRTUAL (GEMINI)
+    # ==========================================
+    elif view_mode == "🤖 Asistente Virtual":
+        st.title("🤖 Asistente Virtual (Powered by Gemini)")
+        st.markdown("Pregúntale a tu dashboard. Ejemplo: *'¿Cuál fue el plato más vendido?'* o *'¿Cómo reducir mermas?'*")
+        
+        # 1. API Key Input
+        api_key = st.sidebar.text_input("Ingresa tu Gemini API Key:", type="password", help="Consíguela en aistudio.google.com")
+        
+        # 2. Context Builder Function
+        def get_dashboard_context(df, sales, mermas, reviews):
+            # Calculate key metrics to feed the AI
+            total_rev = df['target_revenue'].sum()
+            avg_daily_rev = df['target_revenue'].mean()
+            
+            top_items = sales.groupby('item_name')['qty_sold'].sum().sort_values(ascending=False).head(5).to_dict()
+            
+            total_waste = mermas['value_lost_clp'].sum()
+            top_waste_cause = mermas['reason'].value_counts().idxmax()
+            
+            recent_bad_reviews = reviews[reviews['sentiment_label'] == 'negative'].sort_values('date', ascending=False).head(3)['text'].tolist()
+            
+            context = f"""
+            Eres un experto analista de datos de restaurantes. Tienes los siguientes datos actuales del negocio:
+            - Venta Total Periodo: ${total_rev:,.0f}
+            - Venta Promedio Diario: ${avg_daily_rev:,.0f}
+            - Top 5 Platos Más Vendidos: {top_items}
+            - Dinero Total Perdido en Mermas: ${total_waste:,.0f}
+            - Principal Causa de Merma: {top_waste_cause}
+            - Quejas Recientes de Clientes: {recent_bad_reviews}
+            
+            Responde preguntas basándote en estos datos. Sé breve, profesional y útil. Si te preguntan algo fuera de estos datos, di que no tienes esa información específica pero da un consejo general.
+            """
+            return context
+
+        # 3. Chat Logic
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+
+        # Display history
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        # Chat Input
+        if prompt := st.chat_input("Escribe tu pregunta aquí..."):
+            # Visualize User Message
+            with st.chat_message("user"):
+                st.markdown(prompt)
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            
+            # Generate Response
+            if not api_key:
+                response_text = "⚠️ Por favor ingresa tu API Key de Google Gemini en la barra lateral para que pueda responderte."
+            else:
+                try:
+                    genai.configure(api_key=api_key)
+                    model = genai.GenerativeModel('gemini-pro')
+                    
+                    context = get_dashboard_context(df, sales, mermas, reviews)
+                    full_prompt = f"{context}\n\nPregunta del Usuario: {prompt}"
+                    
+                    with st.spinner("Pensando..."):
+                        response = model.generate_content(full_prompt)
+                        response_text = response.text
+                except Exception as e:
+                    response_text = f"❌ Error al conectar con Gemini: {str(e)}"
+            
+            # Visualize AI Message
+            with st.chat_message("assistant"):
+                st.markdown(response_text)
+            st.session_state.messages.append({"role": "assistant", "content": response_text})
 
 else:
     st.warning("Cargando datos... si esto persiste, verifica que los archivos CSV existan.")
