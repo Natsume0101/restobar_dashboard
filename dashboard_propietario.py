@@ -152,6 +152,14 @@ if DATA_LOADED:
         st.title("🍔 Matriz de Rentabilidad (BCG)")
         st.markdown("¿Qué platos son tus **Estrellas** y cuáles son tus **Perros**?")
         
+        with st.expander("ℹ️ ¿Qué significan estas categorías?", expanded=False):
+            st.markdown("""
+            *   **Star ⭐ (Estrella):** Alta Popularidad y Alta Rentabilidad. ¡Cuídalos! Son el motor de tu negocio.
+            *   **Plowhorse 🐎 (Caballito de Batalla):** Alta Popularidad pero Baja Rentabilidad. Traen gente, pero ganas poco. Considera subir el precio o bajar costos.
+            *   **Puzzle ❓ (Incógnita):** Baja Popularidad pero Alta Rentabilidad. Son platos rentables que la gente no pide. ¿Falta marketing? ¿Mejorar la foto?
+            *   **Dog 🐕 (Perro):** Baja Popularidad y Baja Rentabilidad. Evalúa eliminarlos del menú.
+            """)
+        
         # Calculate Item Metrics
         item_stats = sales.groupby('item_name').agg({
             'qty_sold': 'sum',
