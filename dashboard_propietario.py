@@ -36,7 +36,11 @@ def load_data():
     reviews = pd.read_csv('reviews_clientes.csv')
     reviews['date'] = pd.to_datetime(reviews['date'])
     
-    return df, sales, recipes, reviews
+    # Load Waste Data
+    mermas = pd.read_csv('mermas.csv')
+    mermas['date'] = pd.to_datetime(mermas['date'])
+    
+    return df, sales, recipes, reviews, mermas
 
 @st.cache_resource
 def train_model(df):
@@ -61,7 +65,7 @@ def train_model(df):
 
 # Load EVERYTHING
 try:
-    df, sales, recipes, reviews = load_data()
+    df, sales, recipes, reviews, mermas = load_data()
     model, features = train_model(df)
     DATA_LOADED = True
 except Exception as e:
@@ -74,7 +78,7 @@ except Exception as e:
 st.sidebar.title("👨‍🍳 Estación La Serena")
 st.sidebar.info("**Modo Propietario**")
 st.sidebar.markdown("---")
-view_mode = st.sidebar.radio("Ir a:", ["📊 Bola de Cristal (Predicción)", "🍔 Ingeniería de Menú", "⭐ Salud Operacional"])
+view_mode = st.sidebar.radio("Ir a:", ["📊 Bola de Cristal (Predicción)", "🍔 Ingeniería de Menú", "⭐ Salud Operacional", "⏳ Historia & Tendencias"])
 
 if DATA_LOADED:
     
@@ -218,6 +222,91 @@ if DATA_LOADED:
         bad_reviews = reviews[reviews['sentiment_label'] == 'negative'].sort_values('date', ascending=False).head(5)
         for _, row in bad_reviews.iterrows():
             st.error(f"**{row['date'].date()} ({row['platform']})**: {row['text']}")
+
+    # ==========================================
+    # TAB 4: HISTORIA & TENDENCIAS
+    # ==========================================
+    elif view_mode == "⏳ Historia & Tendencias":
+        st.title("⏳ Historia & Tendencias")
+        st.markdown("Explora el comportamiento histórico de tu negocio: Ventas, Mermas, Clima y Clientes.")
+        
+        # Tabs for specific deep dives
+        tab1, tab2, tab3, tab4 = st.tabs(["💰 Ventas Históricas", "🗑️ Análisis de Mermas", "🌤️ Impacto del Clima", "🗣️ Evolución Reviews"])
+        
+        # --- TAB 1: VENTAS ---
+        with tab1:
+            st.subheader("Evolución de Ventas")
+            
+            # Monthly Aggregation
+            sales_monthly = df.set_index('date').resample('M')['target_revenue'].sum().reset_index()
+            
+            fig_sales = px.line(sales_monthly, x='date', y='target_revenue', title="Venta Mensual (3 Años)", markers=True)
+            fig_sales.update_yaxes(title="Venta Total ($)")
+            st.plotly_chart(fig_sales, use_container_width=True)
+            
+            # Day of Week Analysis
+            st.subheader("Días más Fuertes")
+            dow_map = {0:'Lunes', 1:'Martes', 2:'Miércoles', 3:'Jueves', 4:'Viernes', 5:'Sábado', 6:'Domingo'}
+            df['day_name'] = df['day_of_week'].map(dow_map)
+            sales_dow = df.groupby('day_name')['target_revenue'].mean().reindex(['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']).reset_index()
+            
+            fig_dow = px.bar(sales_dow, x='day_name', y='target_revenue', title="Venta Promedio por Día de Semana", color='target_revenue')
+            st.plotly_chart(fig_dow, use_container_width=True)
+
+        # --- TAB 2: MERMAS ---
+        with tab2:
+            st.subheader("Control de Mermas")
+            
+            col1, col2 = st.columns(2)
+            
+            # Total Waste Cost over time (Monthly)
+            waste_monthly = mermas.set_index('date').resample('M')['value_lost_clp'].sum().reset_index()
+            fig_waste_trend = px.area(waste_monthly, x='date', y='value_lost_clp', title="Costo de Mermas Mensual", color_discrete_sequence=['red'])
+            col1.plotly_chart(fig_waste_trend, use_container_width=True)
+            
+            # Waste by Reason
+            waste_reason = mermas.groupby('reason')['value_lost_clp'].sum().reset_index()
+            fig_reason = px.pie(waste_reason, values='value_lost_clp', names='reason', title="Causas de Merma (Dinero perdido)")
+            col2.plotly_chart(fig_reason, use_container_width=True)
+            
+            st.dataframe(mermas.sort_values('date', ascending=False).head(10), use_container_width=True)
+
+        # --- TAB 3: CLIMA ---
+        with tab3:
+            st.subheader("🌤️ ¿Influye el Clima en la Venta?")
+            
+            # Scattering Revenue vs Temp
+            fig_weather = px.scatter(
+                df, 
+                x='weather_temp', 
+                y='target_revenue', 
+                color='is_weekend', 
+                title="Venta vs Temperatura",
+                labels={'weather_temp': 'Temperatura (°C)', 'target_revenue': 'Venta ($)', 'is_weekend': 'Es Finde'},
+                trendline="ols" # Requires statsmodels
+            )
+            st.plotly_chart(fig_weather, use_container_width=True)
+            
+            st.info("💡 **Insight:** Observa si la nube de puntos sube a medida que aumenta la temperatura. La línea de tendencia indica la correlación.")
+
+        # --- TAB 4: REVIEWS ---
+        with tab4:
+            st.subheader("❤️ Evolución de la Felicidad del Cliente")
+            
+            # Monthly Sentiment Count
+            reviews['month'] = reviews['date'].dt.to_period('M').astype(str)
+            sentiment_trend = reviews.groupby(['month', 'sentiment_label']).size().reset_index(name='count')
+            
+            fig_reviews = px.bar(
+                sentiment_trend, 
+                x='month', 
+                y='count', 
+                color='sentiment_label', 
+                title="Cantidad de Reviews por Sentimiento (Mensual)",
+                color_discrete_map={'positive':'green', 'neutral':'grey', 'negative':'red'},
+                barmode='stack'
+            )
+            st.plotly_chart(fig_reviews, use_container_width=True) # type: ignore
 
 else:
     st.warning("Cargando datos... si esto persiste, verifica que los archivos CSV existan.")
