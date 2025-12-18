@@ -402,42 +402,61 @@ if DATA_LOADED:
             trend_str = ", ".join([f"{r['month_str']}: ${r['target_revenue']:,.0f}" for _, r in last_6_months.iterrows()])
             
             # --- 6. FULL RECIPE DATABASE (Injecting all rows) ---
-            # Converting entire recipe dataframe to CSV string for the LLM
             recipes_str = recipes.to_csv(index=False)
+
+            # --- 7. FINANCIAL SUMMARY (Monthly per Item) ---
+            # 7.1 Prepare Monthly Sales
+            sales['month_str'] = sales['date'].dt.to_period('M').astype(str)
+            sales_monthly = sales.groupby(['item_name', 'month_str']).agg({
+                'qty_sold': 'sum',
+                'revenue': 'sum'
+            }).reset_index()
+
+            # 7.2 Prepare Monthly Waste
+            mermas['month_str'] = mermas['date'].dt.to_period('M').astype(str)
+            waste_monthly = mermas.groupby(['item_name', 'month_str'])['value_lost_clp'].sum().reset_index()
+            waste_monthly.rename(columns={'value_lost_clp': 'total_waste'}, inplace=True)
+
+            # 7.3 Merge Sales + Waste + Recipes
+            # Base frame: all sales rows
+            fin_df = pd.merge(sales_monthly, recipes[['item_name', 'cost_clp']], on='item_name', how='left')
+            # Merge waste on item AND month
+            fin_df = pd.merge(fin_df, waste_monthly, on=['item_name', 'month_str'], how='left')
+            
+            # Fill NaNs
+            fin_df['cost_clp'] = fin_df['cost_clp'].fillna(0)
+            fin_df['total_waste'] = fin_df['total_waste'].fillna(0)
+            
+            # 7.4 Calculate Monthly Profit per Item
+            fin_df['total_cost'] = fin_df['qty_sold'] * fin_df['cost_clp']
+            fin_df['final_profit'] = fin_df['revenue'] - fin_df['total_cost'] - fin_df['total_waste']
+            fin_df['profit_margin_pct'] = (fin_df['final_profit'] / fin_df['revenue'] * 100).fillna(0).round(1)
+            
+            # 7.5 Convert to CSV String for Context (Efficient for Large Context Models)
+            # Selecting relevant columns for the AI
+            fin_csv_str = fin_df[['month_str', 'item_name', 'revenue', 'total_cost', 'total_waste', 'final_profit']].to_csv(index=False)
 
             context = f"""
             Eres un experto analista de datos de restaurantes (Dueño de 'Estación La Serena'). 
-            Tienes acceso a la historia completa de 3 AÑOS de datos. Usa esta información para responder:
+            Tienes acceso a la historia completa de 3 AÑOS de datos.
 
             DATOS GENERALES:
-            - Venta Total Histórica: ${total_rev:,.0f} (en {total_days} días operados)
-            - Venta Promedio Diaria: ${avg_daily_rev:,.0f}
-
-            HITS & FRACASOS (VENTAS MENSUALES):
-            - 🏆 MEJOR MES DE LA HISTORIA: {best_month_row['month_str']} con ventas de ${best_month_row['target_revenue']:,.0f}. (Merma ese mes: ${waste_at_best:,.0f})
-            - ⚠️ PEOR MES DE LA HISTORIA: {worst_month_row['month_str']} con ventas de ${worst_month_row['target_revenue']:,.0f}. (Merma ese mes: ${waste_at_worst:,.0f})
-
-            INGENIERÍA DE MENÚ:
-            - ⭐ Platos Super Estrellas (Top Ingresos): {stars_str}
-            - 🐕 Platos Perro (Menos Ingresos, candidatos a eliminar): {dogs_str}
-
-            PATRONES SEMANALES:
-            - Día Más Fuerte: {best_day} (Promedio: ${dow_sales[0]:,.0f})
-            - Día Más Débil: {worst_day} (Promedio: ${dow_sales[-1]:,.0f})
-
-            TENDENCIA RECIENTE (Últimos 6 Meses):
-            - Evolución: {trend_str}
+            - Venta Total Histórica: ${total_rev:,.0f}
             
-            BASE DE DATOS DE RECETAS (FICHA TÉCNICA COMPLETA):
+            BASE DE DATOS DE RECETAS (FICHA TÉCNICA):
             {recipes_str}
+
+            TABLA DE RENTABILIDAD MENSUAL DETALLADA (CSV):
+            Esta tabla contiene el desglose MENSUAL de cada plato: Ventas, Costos, Mermas y GANANCIA REAL.
+            Usa esto para responder preguntas sobre fechas específicas, evoluciones temporales o totales acumulados.
             
-            QUEJAS RECIENTES:
-            - {reviews[reviews['sentiment_label'] == 'negative'].sort_values('date', ascending=False).head(3)['text'].tolist()}
+            {fin_csv_str}
 
             Instrucciones:
-            1. Analiza los costos e ingredientes de la 'BASE DE DATOS DE RECETAS' cuando te pregunten por fichas técnicas.
-            2. Si te preguntan qué platos sacar, sugiere los "Perro" y explica por qué basándote en su costo/margen si está disponible.
-            3. Sé directo y usa emojis.
+            1. Si te piden "mejor mes" de un plato, busca en la tabla de RENTABILIDAD MENSUAL.
+            2. Si te piden "totales", suma los valores de la tabla.
+            3. Si te piden identificar "platos perro" o "estrella", analiza la GANANCIA acumulada o reciente.
+            4. Responde siempre basándote en los datos duros proporcionados.
             """
             return context
 
