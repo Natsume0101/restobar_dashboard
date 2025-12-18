@@ -356,7 +356,7 @@ if DATA_LOADED:
         api_key = st.sidebar.text_input("Ingresa tu Gemini API Key:", type="password", help="Consíguela en aistudio.google.com")
         
         # 2. Context Builder Function
-        def get_dashboard_context(df, sales, mermas, reviews):
+        def get_dashboard_context(df, sales, mermas, reviews, recipes):
             # --- 1. GENERAL METRICS (3 Years) ---
             total_rev = df['target_revenue'].sum()
             avg_daily_rev = df['target_revenue'].mean()
@@ -384,10 +384,6 @@ if DATA_LOADED:
 
             # --- 3. MENU ENGINEERING (Stars/Dogs) ---
             item_stats = sales.groupby('item_name').agg({'qty_sold': 'sum', 'revenue': 'sum'}).reset_index()
-            # Approximate cost/margin calculation just for context (simplified)
-            # merging with recipes if available in scope, but assuming basic rank here 
-            # or re-using the logic from Tab 2 if possible. 
-            # For robustness, we'll just use Top Selling (Stars) and Bottom Selling (Dogs candidates) by revenue
             top_5_items = item_stats.sort_values('revenue', ascending=False).head(5)
             bottom_5_items = item_stats.sort_values('revenue', ascending=True).head(5)
             
@@ -405,6 +401,10 @@ if DATA_LOADED:
             last_6_months = monthly_sales.tail(6)
             trend_str = ", ".join([f"{r['month_str']}: ${r['target_revenue']:,.0f}" for _, r in last_6_months.iterrows()])
             
+            # --- 6. FULL RECIPE DATABASE (Injecting all rows) ---
+            # Converting entire recipe dataframe to CSV string for the LLM
+            recipes_str = recipes.to_csv(index=False)
+
             context = f"""
             Eres un experto analista de datos de restaurantes (Dueño de 'Estación La Serena'). 
             Tienes acceso a la historia completa de 3 AÑOS de datos. Usa esta información para responder:
@@ -428,12 +428,15 @@ if DATA_LOADED:
             TENDENCIA RECIENTE (Últimos 6 Meses):
             - Evolución: {trend_str}
             
+            BASE DE DATOS DE RECETAS (FICHA TÉCNICA COMPLETA):
+            {recipes_str}
+            
             QUEJAS RECIENTES:
             - {reviews[reviews['sentiment_label'] == 'negative'].sort_values('date', ascending=False).head(3)['text'].tolist()}
 
             Instrucciones:
-            1. Si te preguntan por ventas/mermas, cruza los datos de "Mejor Mes" vs su merma.
-            2. Si te preguntan qué platos sacar, sugiere los "Perro".
+            1. Analiza los costos e ingredientes de la 'BASE DE DATOS DE RECETAS' cuando te pregunten por fichas técnicas.
+            2. Si te preguntan qué platos sacar, sugiere los "Perro" y explica por qué basándote en su costo/margen si está disponible.
             3. Sé directo y usa emojis.
             """
             return context
@@ -485,7 +488,7 @@ if DATA_LOADED:
 
                     model = genai.GenerativeModel(active_model_name)
                     
-                    context = get_dashboard_context(df, sales, mermas, reviews)
+                    context = get_dashboard_context(df, sales, mermas, reviews, recipes)
 
                     with st.expander("👀 Debug: ¿Qué datos está viendo la IA?", expanded=False):
                         st.code(context)
