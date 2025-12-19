@@ -40,8 +40,16 @@ def load_data():
     # Load Waste Data
     mermas = pd.read_csv('mermas.csv')
     mermas['date'] = pd.to_datetime(mermas['date'])
+
+    # Load Staffing Data (RRHH)
+    rrhh = pd.read_csv('rrhh_turnos.csv')
+    rrhh['date'] = pd.to_datetime(rrhh['date'])
+
+    # Load Reservations Data
+    reservations = pd.read_csv('reservas.csv')
+    reservations['date'] = pd.to_datetime(reservations['date'])
     
-    return df, sales, recipes, reviews, mermas
+    return df, sales, recipes, reviews, mermas, rrhh, reservations
 
 @st.cache_resource
 def train_model(df):
@@ -66,7 +74,7 @@ def train_model(df):
 
 # Load EVERYTHING
 try:
-    df, sales, recipes, reviews, mermas = load_data()
+    df, sales, recipes, reviews, mermas, rrhh, reservations = load_data()
     model, features = train_model(df)
     DATA_LOADED = True
 except Exception as e:
@@ -353,10 +361,12 @@ if DATA_LOADED:
         st.markdown("Pregúntale a tu dashboard. Ejemplo: *'¿Cuál fue el plato más vendido?'* o *'¿Cómo reducir mermas?'*")
         
         # 1. API Key Input
-        api_key = st.sidebar.text_input("Ingresa tu Gemini API Key:", type="password", help="Consíguela en aistudio.google.com")
+        api_key = st.secrets.get("GEMINI_API_KEY")
+        if not api_key:
+            api_key = st.sidebar.text_input("Ingresa tu Gemini API Key:", type="password", help="Consíguela en aistudio.google.com")
         
         # 2. Context Builder Function
-        def get_dashboard_context(df, sales, mermas, reviews, recipes):
+        def get_dashboard_context(df, sales, mermas, reviews, recipes, rrhh, reservations):
             # --- 1. GENERAL METRICS (3 Years) ---
             total_rev = df['target_revenue'].sum()
             avg_daily_rev = df['target_revenue'].mean()
@@ -529,10 +539,11 @@ if DATA_LOADED:
 
                     model = genai.GenerativeModel(active_model_name)
                     
-                    context = get_dashboard_context(df, sales, mermas, reviews, recipes)
+                    context = get_dashboard_context(df, sales, mermas, reviews, recipes, rrhh, reservations)
 
-                    with st.expander("👀 Debug: ¿Qué datos está viendo la IA?", expanded=False):
-                        st.code(context)
+                    
+                        
+                    full_prompt = f"{context}\n\nPregunta del Usuario: {prompt}"
                         
                     full_prompt = f"{context}\n\nPregunta del Usuario: {prompt}"
                     
