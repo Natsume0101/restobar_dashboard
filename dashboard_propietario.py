@@ -418,45 +418,67 @@ if DATA_LOADED:
             waste_monthly.rename(columns={'value_lost_clp': 'total_waste'}, inplace=True)
 
             # 7.3 Merge Sales + Waste + Recipes
-            # Base frame: all sales rows
             fin_df = pd.merge(sales_monthly, recipes[['item_name', 'cost_clp']], on='item_name', how='left')
-            # Merge waste on item AND month
             fin_df = pd.merge(fin_df, waste_monthly, on=['item_name', 'month_str'], how='left')
             
             # Fill NaNs
             fin_df['cost_clp'] = fin_df['cost_clp'].fillna(0)
             fin_df['total_waste'] = fin_df['total_waste'].fillna(0)
             
-            # 7.4 Calculate Monthly Profit per Item
+            # 7.4 Calculate Monthly Profit
             fin_df['total_cost'] = fin_df['qty_sold'] * fin_df['cost_clp']
             fin_df['final_profit'] = fin_df['revenue'] - fin_df['total_cost'] - fin_df['total_waste']
             fin_df['profit_margin_pct'] = (fin_df['final_profit'] / fin_df['revenue'] * 100).fillna(0).round(1)
             
-            # 7.5 Convert to CSV String for Context (Efficient for Large Context Models)
-            # Selecting relevant columns for the AI
             fin_csv_str = fin_df[['month_str', 'item_name', 'revenue', 'total_cost', 'total_waste', 'final_profit']].to_csv(index=False)
 
-            context = f"""
-            Eres un experto analista de datos de restaurantes (Dueño de 'Estación La Serena'). 
-            Tienes acceso a la historia completa de 3 AÑOS de datos.
-
-            DATOS GENERALES:
-            - Venta Total Histórica: ${total_rev:,.0f}
+            # --- 8. OPERATIONAL DATA (Staffing & Reservations) ---
+            # 8.1 Staffing Analysis (RRHH)
+            # Calculate simple efficiency metrics
+            staff_daily_cost = rrhh.groupby('date')['total_pay'].sum().mean()
+            staff_daily_hours = rrhh.groupby('date')['hours_worked'].sum().mean()
+            staff_role_counts = rrhh['role'].value_counts().to_string() # How many shifts by role historically
             
+            # 8.2 Future Reservations (Simulated "Next 7 Days" from end of data)
+            last_date = reservations['date'].max()
+            last_week_reservations = reservations[reservations['date'] > (last_date - pd.Timedelta(days=7))]
+            res_count_next_week = len(last_week_reservations)
+            res_pax_next_week = last_week_reservations['pax'].sum()
+            busiest_res_day = last_week_reservations['date'].dt.day_name().mode()[0] if not last_week_reservations.empty else "N/A"
+
+            context = f"""
+            Eres el 'Gerente de Datos' de 'Estación La Serena'. Tu trabajo es dar respuestas EXACTAS y TÁCTICAS al dueño.
+            
+            MEMORIA OPERATIVA:
+            - El dueño ODIA las respuestas vagas. Quiere números.
+            - Siempre analiza la RENTABILIDAD REAL (Venta - Costo - Merma).
+            - Usa emojis para resaltar puntos clave 🔴🟢⚠️.
+
+            DATOS FINANCIEROS CLAVE (3 AÑOS):
+            - Venta Total: ${total_rev:,.0f}
+            - Promedio Diario Venta: ${avg_daily_rev:,.0f}
+            
+            DATOS OPERATIVOS (RRHH & CAPACIDAD):
+            - Costo Promedio Diario Personal: ${staff_daily_cost:,.0f} (aprox {staff_daily_hours:.1f} horas hombre/día).
+            - Distribución de Turnos Histórica: 
+            {staff_role_counts}
+            
+            RESERVAS Y DEMANDA (SIMULACIÓN PRÓXIMA SEMANA):
+            - Reservas Agendadas: {res_count_next_week} mesas ({res_pax_next_week} personas).
+            - Día más solicitado: {busiest_res_day}.
+            *Nota: Si hay muchas reservas y el costo de personal es bajo ese día, SUGIERE reforzar turnos.*
+
+            TABLA DE RENTABILIDAD MENSUAL POR PLATO (CSV):
+            (Usa esta tabla para ver tendencias de ganancias, no solo ingresos).
+            {fin_csv_str}
+
             BASE DE DATOS DE RECETAS (FICHA TÉCNICA):
             {recipes_str}
 
-            TABLA DE RENTABILIDAD MENSUAL DETALLADA (CSV):
-            Esta tabla contiene el desglose MENSUAL de cada plato: Ventas, Costos, Mermas y GANANCIA REAL.
-            Usa esto para responder preguntas sobre fechas específicas, evoluciones temporales o totales acumulados.
-            
-            {fin_csv_str}
-
-            Instrucciones:
-            1. Si te piden "mejor mes" de un plato, busca en la tabla de RENTABILIDAD MENSUAL.
-            2. Si te piden "totales", suma los valores de la tabla.
-            3. Si te piden identificar "platos perro" o "estrella", analiza la GANANCIA acumulada o reciente.
-            4. Responde siempre basándote en los datos duros proporcionados.
+            Instrucciones Específicas:
+            1. **Rentabilidad**: Si preguntan "¿Qué plato gano más?" responde con la GANANCIA (Profit), no la Venta (Revenue).
+            2. **Personal**: Si preguntan por eficiencia, compara Venta Diaria vs Costo Diario de Personal. Si la venta es alta y el costo personal bajo, es un día eficiente (o estresante).
+            3. **Mermas**: Siempre menciona cuánto dinero se perdió en mermas si el plato es un "Perro".
             """
             return context
 
